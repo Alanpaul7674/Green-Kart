@@ -22,20 +22,17 @@ const Footer = () => {
           
           {/* Brand Section */}
           <div className="text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start space-x-2 mb-4">
+            <div className="flex items-center justify-center md:justify-start space-x-3 mb-4">
               <img 
                 src="/logo.png" 
                 alt="GreenKart Logo" 
-                className="h-14 w-auto object-contain"
+                className="h-12 w-12 object-contain rounded-lg bg-white/10 p-1"
                 loading="eager"
                 onError={(e) => { 
                   e.target.style.display = 'none'; 
-                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'block'; 
                 }}
               />
-              <span className="text-2xl font-bold" style={{ display: 'none' }}>
-                <span className="text-3xl">🛒</span> GreenKart
-              </span>
+              <span className="text-2xl font-bold text-white">GreenKart</span>
             </div>
             <p className="text-green-200 mb-4">
               Your sustainable shopping destination. Making eco-friendly fashion accessible to everyone.

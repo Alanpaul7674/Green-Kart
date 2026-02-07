@@ -45,11 +45,11 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           
           {/* Logo / Brand Name */}
-          <Link to="/" className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-2 flex-shrink-0">
             <img 
               src="/logo.png" 
               alt="GreenKart Logo" 
-              className="h-10 w-auto object-contain"
+              className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded-lg bg-white/10 p-1"
               loading="eager"
               fetchPriority="high"
               onError={(e) => { 
@@ -57,10 +57,7 @@ const Navbar = () => {
                 if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
               }}
             />
-            <span className="text-white text-xl font-bold hidden items-center gap-2" style={{ display: 'none' }}>
-              <span className="text-2xl">🛒</span>
-              GreenKart
-            </span>
+            <span className="text-white text-lg sm:text-xl font-bold">GreenKart</span>
           </Link>
 
           {/* Desktop Navigation Links */}
