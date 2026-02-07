@@ -19,12 +19,17 @@ build/
 *.log
 npm-debug.log*
 
-# Screenshots and images in root
-*.png
-*.jpeg
-*.jpg
+# Screenshots and images in root (not in frontend/public)
+/*.png
+/*.jpeg
+/*.jpg
 Screenshot*
 WhatsApp*
+
+# Allow frontend public images
+!frontend/public/*.png
+!frontend/public/*.jpg
+!frontend/public/*.jpeg
 
 # Firebase secrets
 backend/config/serviceAccountKey.json
