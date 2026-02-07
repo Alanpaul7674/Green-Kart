@@ -46,12 +46,32 @@ const initializeFirebase = () => {
         // Handle private key - it may be escaped or have literal \n
         let privateKey = process.env.FIREBASE_PRIVATE_KEY;
         
-        // Replace literal \n with actual newlines
+        // Log key info for debugging (first 50 chars only)
+        console.log('🔑 Private key starts with:', privateKey.substring(0, 50));
+        console.log('🔑 Private key length:', privateKey.length);
+        
+        // Replace literal \n with actual newlines (handles JSON escaped format)
         privateKey = privateKey.replace(/\\n/g, '\n');
+        
+        // Also handle double-escaped newlines
+        privateKey = privateKey.replace(/\\\\n/g, '\n');
         
         // If the key is wrapped in quotes, remove them
         if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
           privateKey = privateKey.slice(1, -1);
+          privateKey = privateKey.replace(/\\n/g, '\n');
+        }
+        
+        // If the key is wrapped in single quotes, remove them
+        if (privateKey.startsWith("'") && privateKey.endsWith("'")) {
+          privateKey = privateKey.slice(1, -1);
+          privateKey = privateKey.replace(/\\n/g, '\n');
+        }
+        
+        // Ensure proper format
+        if (!privateKey.includes('-----BEGIN')) {
+          console.error('❌ Private key format is invalid - missing BEGIN marker');
+          throw new Error('FIREBASE_PRIVATE_KEY format is invalid');
         }
         
         serviceAccount = {
@@ -63,6 +83,7 @@ const initializeFirebase = () => {
         console.log('🔑 Using environment variables for Firebase');
         console.log(`   Project ID: ${process.env.FIREBASE_PROJECT_ID}`);
         console.log(`   Client Email: ${process.env.FIREBASE_CLIENT_EMAIL}`);
+        console.log(`   Private Key valid format: ${privateKey.includes('-----BEGIN PRIVATE KEY-----')}`);
       } else {
         console.error('❌ Missing Firebase environment variables:');
         console.error(`   FIREBASE_PROJECT_ID: ${process.env.FIREBASE_PROJECT_ID ? '✓' : '✗ missing'}`);
