@@ -1,0 +1,41 @@
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Environment files
+.env
+.env.local
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# ML Models (will add models folder later)
+models/*.pkl
+models/*.h5
+models/*.pt
+
+# Logs
+logs/
+*.log

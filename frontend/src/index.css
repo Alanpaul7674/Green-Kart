@@ -1,0 +1,39 @@
+/**
+ * GreenKart Frontend - Main Stylesheet
+ * Using Tailwind CSS for utility-first styling
+ */
+
+/* Import Tailwind CSS */
+@import "tailwindcss";
+
+/* Custom CSS variables for the green theme */
+:root {
+  --green-primary: #16a34a;
+  --green-dark: #15803d;
+  --green-light: #22c55e;
+}
+
+/* Base styles */
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #f9fafb;
+  min-height: 100vh;
+  margin: 0;
+}
+
+/* Custom utility classes */
+.btn-primary {
+  @apply bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200;
+}
+
+.btn-secondary {
+  @apply bg-white hover:bg-gray-100 text-green-600 font-semibold py-2 px-4 rounded-lg border border-green-600 transition-colors duration-200;
+}
+
+.card {
+  @apply bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow duration-200;
+}
+
+.input-field {
+  @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all duration-200;
+}
