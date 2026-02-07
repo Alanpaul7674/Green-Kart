@@ -49,14 +49,17 @@ const Home = () => {
   return (
     <div>
       {/* Full Screen Hero Section with Background Image */}
-      <section className="relative min-h-screen flex items-center">
-        {/* Full screen background image */}
-        <div 
-          className="absolute inset-0 w-full h-full bg-cover bg-center bg-no-repeat"
-          style={{ 
-            backgroundImage: 'url(/hero-fashion.jpg)',
-          }}
+      <section className="relative min-h-screen flex items-center overflow-hidden">
+        {/* Full screen background image - using img tag for better mobile compatibility */}
+        <img 
+          src="/hero-fashion.jpg"
+          alt="Sustainable Fashion"
+          className="absolute inset-0 w-full h-full object-cover object-center"
+          style={{ minHeight: '100vh' }}
         />
+        
+        {/* Fallback background color */}
+        <div className="absolute inset-0 bg-gradient-to-br from-green-800 to-green-600 -z-10" />
         
         {/* Gradient overlay for better text readability */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent" />

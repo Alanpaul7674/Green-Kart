@@ -49,10 +49,15 @@ const Navbar = () => {
             <img 
               src="/logo.png" 
               alt="GreenKart Logo" 
-              className="h-10 w-auto"
-              onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+              className="h-10 w-auto object-contain"
+              loading="eager"
+              fetchPriority="high"
+              onError={(e) => { 
+                e.target.style.display = 'none'; 
+                if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex'; 
+              }}
             />
-            <span className="text-white text-xl font-bold hidden items-center gap-2">
+            <span className="text-white text-xl font-bold hidden items-center gap-2" style={{ display: 'none' }}>
               <span className="text-2xl">🛒</span>
               GreenKart
             </span>

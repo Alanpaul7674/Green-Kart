@@ -26,10 +26,14 @@ const Footer = () => {
               <img 
                 src="/logo.png" 
                 alt="GreenKart Logo" 
-                className="h-14 w-auto"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
+                className="h-14 w-auto object-contain"
+                loading="eager"
+                onError={(e) => { 
+                  e.target.style.display = 'none'; 
+                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'block'; 
+                }}
               />
-              <span className="text-2xl font-bold hidden">
+              <span className="text-2xl font-bold" style={{ display: 'none' }}>
                 <span className="text-3xl">🛒</span> GreenKart
               </span>
             </div>
