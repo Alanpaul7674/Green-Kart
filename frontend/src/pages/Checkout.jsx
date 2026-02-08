@@ -165,7 +165,8 @@ const Checkout = () => {
       const response = await createOrder(orderData);
       
       if (response.success) {
-        setOrderId(response.orderId);
+        const newOrderId = response.data?.orderId || response.orderId;
+        setOrderId(newOrderId);
         
         // Save purchase history for local carbon tracking (user-specific)
         const userId = user?.id || user?.uid || user?.email;
@@ -174,7 +175,7 @@ const Checkout = () => {
         const newPurchases = cartItems.map(item => ({
           ...item,
           purchaseDate: new Date().toISOString(),
-          orderId: response.orderId,
+          orderId: newOrderId,
         }));
         localStorage.setItem(storageKey, JSON.stringify([...existingPurchases, ...newPurchases]));
         
