@@ -5,10 +5,10 @@
 
 const express = require('express');
 const router = express.Router();
-const nodemailer = require('nodemailer');
 
-// Import controller
+// Import controller and email service
 const { healthCheck } = require('../controllers/healthController');
+const { sendTestEmail } = require('../services/emailService');
 
 /**
  * @route   GET /api/health
@@ -19,7 +19,7 @@ router.get('/', healthCheck);
 
 /**
  * @route   POST /api/health/test-email
- * @desc    Test email sending
+ * @desc    Test email sending via Resend API
  * @access  Public (for debugging only)
  */
 router.post('/test-email', async (req, res) => {
@@ -30,40 +30,31 @@ router.post('/test-email', async (req, res) => {
   }
 
   try {
-    console.log('Testing email with config:');
-    console.log('EMAIL_USER:', process.env.EMAIL_USER);
-    console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '***SET***' : '***NOT SET***');
+    console.log('Testing email via Resend API...');
+    console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? '***SET***' : '***NOT SET***');
     
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    // Verify connection
-    await transporter.verify();
-    console.log('Email transporter verified successfully');
-
-    // Send test email
-    const info = await transporter.sendMail({
-      from: `"GreenKart" <${process.env.EMAIL_USER}>`,
-      to: to,
-      subject: 'GreenKart Email Test',
-      text: 'This is a test email from GreenKart deployed server.',
-      html: '<h1>GreenKart Email Test</h1><p>Email is working from the deployed server!</p>',
-    });
-
-    console.log('Email sent:', info.response);
-    res.json({ success: true, message: 'Email sent successfully', response: info.response });
+    const result = await sendTestEmail(to);
+    
+    if (result.success) {
+      res.json({ 
+        success: true, 
+        message: result.mock ? 'Email logged (no API key)' : 'Email sent successfully',
+        mock: result.mock || false,
+        id: result.id,
+      });
+    } else {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Email failed', 
+        error: result.error,
+      });
+    }
   } catch (error) {
     console.error('Email test failed:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Email failed', 
       error: error.message,
-      code: error.code,
     });
   }
 });
