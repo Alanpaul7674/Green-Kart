@@ -5,9 +5,14 @@
 
 import axios from 'axios';
 
+// Get API URL from environment variable or use localhost for development
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
+console.log('API URL:', API_URL); // Debug log
+
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: 'http://localhost:5001/api',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
