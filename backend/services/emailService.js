@@ -6,16 +6,29 @@
 
 const nodemailer = require('nodemailer');
 
-// Email transporter configuration
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+// Create reusable transporter with connection pool
+let transporter = null;
+
+const getTransporter = () => {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      pool: true, // Use connection pool
+      maxConnections: 3,
+      maxMessages: 100,
+      rateDelta: 1000,
+      rateLimit: 5,
+    });
+  }
+  return transporter;
 };
+
+// Legacy function for backward compatibility
+const createTransporter = getTransporter;
 
 /**
  * Send Welcome Email to new users

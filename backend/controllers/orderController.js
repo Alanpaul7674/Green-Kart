@@ -117,15 +117,7 @@ const createOrder = async (req, res) => {
       });
     }
 
-    // Send confirmation email
-    try {
-      await sendOrderConfirmationEmail(orderData);
-      console.log('✅ Order confirmation email sent to:', orderData.userEmail);
-    } catch (emailError) {
-      console.error('⚠️ Failed to send email:', emailError.message);
-      // Don't fail the order if email fails
-    }
-
+    // Send response immediately - don't wait for email
     res.status(201).json({
       success: true,
       message: 'Order placed successfully',
@@ -137,6 +129,11 @@ const createOrder = async (req, res) => {
         email: orderData.userEmail,
       },
     });
+
+    // Send confirmation email in background (non-blocking)
+    sendOrderConfirmationEmail(orderData)
+      .then(() => console.log('✅ Order confirmation email sent to:', orderData.userEmail))
+      .catch((emailError) => console.error('⚠️ Failed to send email:', emailError.message));
 
   } catch (error) {
     console.error('Error creating order:', error);
