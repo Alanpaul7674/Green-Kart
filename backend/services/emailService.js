@@ -1,22 +1,27 @@
 /**
  * Email Service
- * Centralized email functionality using Resend API
- * Works on Render (no SMTP blocking issues)
+ * Centralized email functionality using Brevo (Sendinblue) API
+ * Free tier: 300 emails/day - Works on Render via HTTP API
+ * Sends FROM your Gmail address (greenkart4u@gmail.com)
  */
 
-const { Resend } = require('resend');
+const SibApiV3Sdk = require('@getbrevo/brevo');
 
-// Initialize Resend with API key
-const getResend = () => {
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('⚠️ RESEND_API_KEY not configured - emails will be logged only');
+// Initialize Brevo API
+const getBrevoClient = () => {
+  if (!process.env.BREVO_API_KEY) {
+    console.warn('⚠️ BREVO_API_KEY not configured - emails will be logged only');
     return null;
   }
-  return new Resend(process.env.RESEND_API_KEY);
+  
+  const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+  apiInstance.setApiKey(SibApiV3Sdk.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+  return apiInstance;
 };
 
-// From email - must be verified domain or use onboarding@resend.dev for testing
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'GreenKart <onboarding@resend.dev>';
+// Sender email - your Gmail address
+const SENDER_EMAIL = process.env.EMAIL_USER || 'greenkart4u@gmail.com';
+const SENDER_NAME = 'GreenKart';
 
 /**
  * Send Welcome Email to new users
@@ -24,7 +29,7 @@ const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'GreenKart <onboarding@resen
  * @param {string} userName - User's name
  */
 const sendWelcomeEmail = async (userEmail, userName) => {
-  const resend = getResend();
+  const apiInstance = getBrevoClient();
   
   const emailHtml = `
     <!DOCTYPE html>
@@ -68,7 +73,7 @@ const sendWelcomeEmail = async (userEmail, userName) => {
             
             <table style="width: 100%;">
               <tr>
-                <td style="padding: 10px 0; vertical-align: top;">
+                <td style="padding: 10px 0; vertical-align: top; width: 40px;">
                   <span style="font-size: 24px;">🌍</span>
                 </td>
                 <td style="padding: 10px 0; padding-left: 12px;">
@@ -129,11 +134,8 @@ const sendWelcomeEmail = async (userEmail, userName) => {
             </tr>
           </table>
           
-          <!-- Divider -->
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-          
           <!-- Footer Message -->
-          <div style="text-align: center;">
+          <div style="text-align: center; border-top: 1px solid #e5e7eb; padding-top: 20px;">
             <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 15px;">
               Every purchase you make helps reduce fashion's environmental impact. 
               Together, we can make a difference! 🌿
@@ -159,27 +161,22 @@ const sendWelcomeEmail = async (userEmail, userName) => {
     </html>
   `;
 
-  if (!resend) {
+  if (!apiInstance) {
     console.log(`📧 [MOCK] Welcome email would be sent to ${userEmail}`);
-    console.log(`   Subject: 🌱 Welcome to GreenKart - Your Eco-Fashion Journey Begins!`);
     return { success: true, mock: true };
   }
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: [userEmail],
-      subject: '🌱 Welcome to GreenKart - Your Eco-Fashion Journey Begins!',
-      html: emailHtml,
-    });
+    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    sendSmtpEmail.subject = '🌱 Welcome to GreenKart - Your Eco-Fashion Journey Begins!';
+    sendSmtpEmail.htmlContent = emailHtml;
+    sendSmtpEmail.sender = { name: SENDER_NAME, email: SENDER_EMAIL };
+    sendSmtpEmail.to = [{ email: userEmail, name: userName }];
+    sendSmtpEmail.replyTo = { email: SENDER_EMAIL, name: SENDER_NAME };
 
-    if (error) {
-      console.error('❌ Failed to send welcome email:', error);
-      return { success: false, error: error.message };
-    }
-
-    console.log(`✅ Welcome email sent to ${userEmail} (ID: ${data.id})`);
-    return { success: true, id: data.id };
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log(`✅ Welcome email sent to ${userEmail} (ID: ${result.messageId})`);
+    return { success: true, messageId: result.messageId };
   } catch (error) {
     console.error('❌ Failed to send welcome email:', error.message);
     return { success: false, error: error.message };
@@ -192,22 +189,18 @@ const sendWelcomeEmail = async (userEmail, userName) => {
  * @param {Object} orderDetails - Order information
  */
 const sendOrderConfirmationEmail = async (userEmail, orderDetails) => {
-  const resend = getResend();
+  const apiInstance = getBrevoClient();
   
   const { orderId, items = [], totalAmount, paymentMethod, shippingAddress } = orderDetails;
   
   const itemsHtml = items.map(item => `
     <tr>
       <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
-        <div style="display: flex; align-items: center;">
-          <div>
-            <strong style="color: #374151;">${item.name || 'Product'}</strong>
-            <p style="margin: 4px 0 0; color: #6b7280; font-size: 12px;">Qty: ${item.quantity || 1}</p>
-          </div>
-        </div>
+        <strong style="color: #374151;">${item.name || 'Product'}</strong>
+        <p style="margin: 4px 0 0; color: #6b7280; font-size: 12px;">Qty: ${item.quantity || 1}</p>
       </td>
       <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e5e7eb; color: #374151;">
-        ₹${(item.price * (item.quantity || 1)).toFixed(2)}
+        ₹${((item.price || 0) * (item.quantity || 1)).toFixed(2)}
       </td>
     </tr>
   `).join('');
@@ -324,27 +317,23 @@ const sendOrderConfirmationEmail = async (userEmail, orderDetails) => {
     </html>
   `;
 
-  if (!resend) {
+  if (!apiInstance) {
     console.log(`📧 [MOCK] Order confirmation email would be sent to ${userEmail}`);
     console.log(`   Order ID: ${orderId}, Amount: ₹${totalAmount}`);
     return { success: true, mock: true };
   }
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: [userEmail],
-      subject: `✅ Order Confirmed - #${orderId} | GreenKart`,
-      html: emailHtml,
-    });
+    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    sendSmtpEmail.subject = `✅ Order Confirmed - #${orderId} | GreenKart`;
+    sendSmtpEmail.htmlContent = emailHtml;
+    sendSmtpEmail.sender = { name: SENDER_NAME, email: SENDER_EMAIL };
+    sendSmtpEmail.to = [{ email: userEmail }];
+    sendSmtpEmail.replyTo = { email: SENDER_EMAIL, name: SENDER_NAME };
 
-    if (error) {
-      console.error('❌ Failed to send order confirmation:', error);
-      return { success: false, error: error.message };
-    }
-
-    console.log(`✅ Order confirmation sent to ${userEmail} (ID: ${data.id})`);
-    return { success: true, id: data.id };
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log(`✅ Order confirmation sent to ${userEmail} (ID: ${result.messageId})`);
+    return { success: true, messageId: result.messageId };
   } catch (error) {
     console.error('❌ Failed to send order confirmation:', error.message);
     return { success: false, error: error.message };
@@ -357,7 +346,7 @@ const sendOrderConfirmationEmail = async (userEmail, orderDetails) => {
  * @param {string} resetLink - Password reset link
  */
 const sendPasswordResetEmail = async (userEmail, resetLink) => {
-  const resend = getResend();
+  const apiInstance = getBrevoClient();
   
   const emailHtml = `
     <!DOCTYPE html>
@@ -389,26 +378,22 @@ const sendPasswordResetEmail = async (userEmail, resetLink) => {
     </html>
   `;
 
-  if (!resend) {
+  if (!apiInstance) {
     console.log(`📧 [MOCK] Password reset email would be sent to ${userEmail}`);
     return { success: true, mock: true };
   }
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: [userEmail],
-      subject: '🔐 Reset Your GreenKart Password',
-      html: emailHtml,
-    });
+    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    sendSmtpEmail.subject = '🔐 Reset Your GreenKart Password';
+    sendSmtpEmail.htmlContent = emailHtml;
+    sendSmtpEmail.sender = { name: SENDER_NAME, email: SENDER_EMAIL };
+    sendSmtpEmail.to = [{ email: userEmail }];
+    sendSmtpEmail.replyTo = { email: SENDER_EMAIL, name: SENDER_NAME };
 
-    if (error) {
-      console.error('❌ Failed to send password reset email:', error);
-      return { success: false, error: error.message };
-    }
-
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
     console.log(`✅ Password reset email sent to ${userEmail}`);
-    return { success: true, id: data.id };
+    return { success: true, messageId: result.messageId };
   } catch (error) {
     console.error('❌ Failed to send password reset email:', error.message);
     return { success: false, error: error.message };
@@ -419,46 +404,43 @@ const sendPasswordResetEmail = async (userEmail, resetLink) => {
  * Send test email (for debugging)
  */
 const sendTestEmail = async (toEmail) => {
-  const resend = getResend();
+  const apiInstance = getBrevoClient();
   
-  if (!resend) {
+  if (!apiInstance) {
     console.log(`📧 [MOCK] Test email would be sent to ${toEmail}`);
     return { 
       success: true, 
       mock: true, 
-      message: 'RESEND_API_KEY not configured - email logged only' 
+      message: 'BREVO_API_KEY not configured - email logged only' 
     };
   }
 
   try {
-    const { data, error } = await resend.emails.send({
-      from: FROM_EMAIL,
-      to: [toEmail],
-      subject: '🧪 GreenKart Email Test',
-      html: `
-        <div style="font-family: sans-serif; padding: 20px; text-align: center;">
-          <h1 style="color: #16a34a;">✅ Email Test Successful!</h1>
-          <p>Your GreenKart email configuration is working correctly.</p>
-          <p style="color: #666;">Sent at: ${new Date().toISOString()}</p>
-          <p style="color: #16a34a;">🌱 GreenKart - Sustainable Fashion Marketplace</p>
-        </div>
-      `,
-    });
+    const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+    sendSmtpEmail.subject = '🧪 GreenKart Email Test';
+    sendSmtpEmail.htmlContent = `
+      <div style="font-family: sans-serif; padding: 20px; text-align: center;">
+        <h1 style="color: #16a34a;">✅ Email Test Successful!</h1>
+        <p>Your GreenKart email configuration is working correctly.</p>
+        <p style="color: #666;">Sent at: ${new Date().toISOString()}</p>
+        <p style="color: #666;">From: ${SENDER_EMAIL}</p>
+        <p style="color: #16a34a;">🌱 GreenKart - Sustainable Fashion Marketplace</p>
+      </div>
+    `;
+    sendSmtpEmail.sender = { name: SENDER_NAME, email: SENDER_EMAIL };
+    sendSmtpEmail.to = [{ email: toEmail }];
+    sendSmtpEmail.replyTo = { email: SENDER_EMAIL, name: SENDER_NAME };
 
-    if (error) {
-      console.error('❌ Test email failed:', error);
-      return { success: false, error: error.message };
-    }
-
-    console.log(`✅ Test email sent to ${toEmail} (ID: ${data.id})`);
-    return { success: true, id: data.id };
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log(`✅ Test email sent to ${toEmail} (ID: ${result.messageId})`);
+    return { success: true, messageId: result.messageId };
   } catch (error) {
     console.error('❌ Test email failed:', error.message);
     return { success: false, error: error.message };
   }
 };
 
-// Legacy nodemailer compatibility
+// Legacy compatibility
 const createTransporter = () => null;
 
 module.exports = {

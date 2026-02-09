@@ -19,7 +19,7 @@ router.get('/', healthCheck);
 
 /**
  * @route   POST /api/health/test-email
- * @desc    Test email sending via Resend API
+ * @desc    Test email sending via Brevo API
  * @access  Public (for debugging only)
  */
 router.post('/test-email', async (req, res) => {
@@ -30,8 +30,8 @@ router.post('/test-email', async (req, res) => {
   }
 
   try {
-    console.log('Testing email via Resend API...');
-    console.log('RESEND_API_KEY:', process.env.RESEND_API_KEY ? '***SET***' : '***NOT SET***');
+    console.log('Testing email via Brevo API...');
+    console.log('BREVO_API_KEY:', process.env.BREVO_API_KEY ? '***SET***' : '***NOT SET***');
     
     const result = await sendTestEmail(to);
     
@@ -40,7 +40,7 @@ router.post('/test-email', async (req, res) => {
         success: true, 
         message: result.mock ? 'Email logged (no API key)' : 'Email sent successfully',
         mock: result.mock || false,
-        id: result.id,
+        messageId: result.messageId,
       });
     } else {
       res.status(500).json({ 
