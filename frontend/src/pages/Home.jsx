@@ -150,7 +150,7 @@ const Home = () => {
                     </div>
                     {/* Eco Score */}
                     <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm rounded-full p-1 shadow-md">
-                      <EcoScoreRing score={product.ecoScore} size="sm" />
+                      <EcoScoreRing score={product.ecoScore} size="sm" totalCarbonFootprint={product.totalCarbonFootprint} />
                     </div>
                   </div>
                   <div className="p-4">

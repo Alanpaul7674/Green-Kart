@@ -140,7 +140,7 @@ const ProductDetail = () => {
               </span>
               {/* Eco Score Badge on Image */}
               <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm rounded-xl p-3 shadow-lg">
-                <EcoScoreRing score={product.ecoScore} size="md" />
+                <EcoScoreRing score={product.ecoScore} size="md" totalCarbonFootprint={product.totalCarbonFootprint} />
                 <p className="text-xs text-center text-gray-500 mt-1">Eco Score</p>
               </div>
               {/* Carbon Impact Badge */}
@@ -355,9 +355,9 @@ const ProductDetail = () => {
                       className="w-full h-full object-cover"
                       loading="lazy"
                     />
-                    {item.ecoScore && (
+                    {(item.ecoScore || item.totalCarbonFootprint) && (
                       <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1 shadow-md">
-                        <EcoScoreRing score={item.ecoScore} size="sm" />
+                        <EcoScoreRing score={item.ecoScore} size="sm" totalCarbonFootprint={item.totalCarbonFootprint} />
                       </div>
                     )}
                   </div>

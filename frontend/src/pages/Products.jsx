@@ -6,7 +6,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { getProducts } from '../services/productApi';
-import { CarbonBadgeCompact, EcoScoreRing } from '../components/CarbonBadge';
+import { CarbonBadgeCompact, EcoScoreRing, calculateEcoScore } from '../components/CarbonBadge';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -75,10 +75,12 @@ const Products = () => {
         result = [...result].sort((a, b) => a.name.localeCompare(b.name));
         break;
       case 'eco-high':
-        result = [...result].sort((a, b) => (b.ecoScore || 0) - (a.ecoScore || 0));
+        // Higher eco score = lower carbon footprint
+        result = [...result].sort((a, b) => (a.totalCarbonFootprint || 0) - (b.totalCarbonFootprint || 0));
         break;
       case 'eco-low':
-        result = [...result].sort((a, b) => (a.ecoScore || 0) - (b.ecoScore || 0));
+        // Lower eco score = higher carbon footprint
+        result = [...result].sort((a, b) => (b.totalCarbonFootprint || 0) - (a.totalCarbonFootprint || 0));
         break;
       case 'carbon-low':
         result = [...result].sort((a, b) => (a.totalCarbonFootprint || 0) - (b.totalCarbonFootprint || 0));
@@ -280,7 +282,7 @@ const Products = () => {
                     {product.category}
                   </span>
                   <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-full p-1 shadow-md">
-                    <EcoScoreRing score={product.ecoScore} size="sm" />
+                    <EcoScoreRing score={product.ecoScore} size="sm" totalCarbonFootprint={product.totalCarbonFootprint} />
                   </div>
                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
                     <span className="opacity-0 group-hover:opacity-100 bg-white text-green-600 px-4 py-2 rounded-lg font-semibold transition-opacity duration-300">
@@ -296,7 +298,7 @@ const Products = () => {
                   <p className="text-gray-500 text-sm mt-1 line-clamp-2">{product.description}</p>
                   
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                    <CarbonBadgeCompact ecoScore={product.ecoScore} carbonImpactLevel={product.carbonImpactLevel} />
+                    <CarbonBadgeCompact ecoScore={product.ecoScore} carbonImpactLevel={product.carbonImpactLevel} totalCarbonFootprint={product.totalCarbonFootprint} />
                     <span className="text-xs text-gray-500">{product.totalCarbonFootprint?.toFixed(2)} kg CO₂</span>
                   </div>
                   

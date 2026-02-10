@@ -5,6 +5,24 @@
 
 import { useState } from 'react';
 
+/**
+ * Calculate EcoScore from Carbon Footprint using the formula:
+ * EcoScore = (maxCFP - predictedCFP) / (maxCFP - minCFP) × 100
+ * Where minCFP = 1.0 and maxCFP = 20.0 (based on dataset range)
+ */
+export const calculateEcoScore = (carbonFootprint) => {
+  const minCFP = 1.0;   // Minimum carbon footprint in dataset
+  const maxCFP = 20.0;  // Maximum carbon footprint in dataset
+  
+  // Clamp the carbon footprint to valid range
+  const clampedCFP = Math.max(minCFP, Math.min(maxCFP, carbonFootprint || minCFP));
+  
+  // Apply the formula: (maxCFP - predictedCFP) / (maxCFP - minCFP) × 100
+  const score = ((maxCFP - clampedCFP) / (maxCFP - minCFP)) * 100;
+  
+  return Math.round(Math.max(0, Math.min(100, score)));
+};
+
 // Get color based on carbon impact level
 const getImpactColor = (level) => {
   switch (level?.toLowerCase()) {
@@ -62,13 +80,15 @@ const getEcoScoreGradient = (score) => {
 /**
  * Compact badge for product cards
  */
-export const CarbonBadgeCompact = ({ ecoScore, carbonImpactLevel }) => {
+export const CarbonBadgeCompact = ({ ecoScore, carbonImpactLevel, totalCarbonFootprint }) => {
+  // Calculate EcoScore from carbon footprint if provided
+  const calculatedScore = totalCarbonFootprint ? calculateEcoScore(totalCarbonFootprint) : ecoScore;
   const colors = getImpactColor(carbonImpactLevel);
   
   return (
     <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text} ${colors.border} border`}>
       <span>{colors.icon}</span>
-      <span>{ecoScore}</span>
+      <span>{calculatedScore}</span>
     </div>
   );
 };
@@ -86,8 +106,10 @@ export const CarbonBadgeFull = ({
   recommendations 
 }) => {
   const [showDetails, setShowDetails] = useState(false);
+  // Calculate EcoScore from carbon footprint using the correct formula
+  const calculatedScore = totalCarbonFootprint ? calculateEcoScore(totalCarbonFootprint) : ecoScore;
   const colors = getImpactColor(carbonImpactLevel);
-  const scoreGradient = getEcoScoreGradient(ecoScore);
+  const scoreGradient = getEcoScoreGradient(calculatedScore);
   
   // Calculate percentages for breakdown
   const total = (materialImpact || 0) + (transportImpact || 0) + (packagingImpact || 0);
@@ -109,7 +131,7 @@ export const CarbonBadgeFull = ({
           </div>
           <div className="text-right">
             <div className={`text-3xl font-bold bg-gradient-to-r ${scoreGradient} bg-clip-text text-transparent`}>
-              {ecoScore}
+              {calculatedScore}
             </div>
             <p className="text-xs text-gray-500">Eco Score</p>
           </div>
@@ -206,13 +228,15 @@ export const CarbonBadgeFull = ({
 /**
  * Mini badge for product listing hover
  */
-export const CarbonBadgeMini = ({ ecoScore, carbonImpactLevel }) => {
+export const CarbonBadgeMini = ({ ecoScore, carbonImpactLevel, totalCarbonFootprint }) => {
+  // Calculate EcoScore from carbon footprint if provided
+  const calculatedScore = totalCarbonFootprint ? calculateEcoScore(totalCarbonFootprint) : ecoScore;
   const colors = getImpactColor(carbonImpactLevel);
   
   return (
     <div className="flex items-center gap-1">
-      <span className={`text-xs font-bold ${getEcoScoreColor(ecoScore)}`}>
-        {ecoScore}
+      <span className={`text-xs font-bold ${getEcoScoreColor(calculatedScore)}`}>
+        {calculatedScore}
       </span>
       <span className="text-xs">{colors.icon}</span>
     </div>
@@ -222,7 +246,10 @@ export const CarbonBadgeMini = ({ ecoScore, carbonImpactLevel }) => {
 /**
  * Eco Score Ring - circular progress indicator
  */
-export const EcoScoreRing = ({ score, size = 'md' }) => {
+export const EcoScoreRing = ({ score, size = 'md', totalCarbonFootprint }) => {
+  // Calculate EcoScore from carbon footprint if provided
+  const calculatedScore = totalCarbonFootprint ? calculateEcoScore(totalCarbonFootprint) : (score || 0);
+  
   const sizes = {
     sm: { ring: 40, stroke: 4, text: 'text-sm' },
     md: { ring: 60, stroke: 5, text: 'text-lg' },
@@ -232,7 +259,7 @@ export const EcoScoreRing = ({ score, size = 'md' }) => {
   const { ring, stroke, text } = sizes[size];
   const radius = (ring - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
-  const progress = ((score || 0) / 100) * circumference;
+  const progress = (calculatedScore / 100) * circumference;
   
   const getStrokeColor = (score) => {
     if (score >= 80) return '#22c55e'; // green-500
@@ -259,7 +286,7 @@ export const EcoScoreRing = ({ score, size = 'md' }) => {
           cy={ring / 2}
           r={radius}
           fill="none"
-          stroke={getStrokeColor(score)}
+          stroke={getStrokeColor(calculatedScore)}
           strokeWidth={stroke}
           strokeDasharray={circumference}
           strokeDashoffset={circumference - progress}
@@ -268,7 +295,7 @@ export const EcoScoreRing = ({ score, size = 'md' }) => {
         />
       </svg>
       <span className={`absolute ${text} font-bold text-gray-700`}>
-        {score || 0}
+        {calculatedScore}
       </span>
     </div>
   );
