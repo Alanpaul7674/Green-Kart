@@ -40,7 +40,7 @@ const AdminDashboard = () => {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/api/products?limit=500');
+      const response = await api.get('/products?limit=500');
       const data = response.data?.data?.products || response.data?.products || [];
       setProducts(data);
     } catch (error) {
@@ -87,7 +87,7 @@ const AdminDashboard = () => {
     try {
       await predictCarbonFootprint();
       
-      const response = await api.post('/api/products', {
+      const response = await api.post('/products', {
         ...formData,
         price: parseFloat(formData.price),
         weight: parseFloat(formData.weight),
@@ -113,7 +113,7 @@ const AdminDashboard = () => {
     setSaving(true);
     
     try {
-      const response = await api.put(`/api/products/${selectedProduct.id}`, {
+      const response = await api.put(`/products/${selectedProduct.id}`, {
         ...formData,
         price: parseFloat(formData.price),
         weight: parseFloat(formData.weight),
@@ -139,7 +139,7 @@ const AdminDashboard = () => {
     if (!window.confirm(`Are you sure you want to delete "${name}"?`)) return;
     
     try {
-      const response = await api.delete(`/api/products/${id}`);
+      const response = await api.delete(`/products/${id}`);
       if (response.data.success) {
         setMessage({ type: 'success', text: '🗑️ Product deleted successfully!' });
         fetchProducts();
