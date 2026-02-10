@@ -11,10 +11,12 @@ venv/
 __pycache__/
 *.pyc
 
-# Large model files (too large for git)
-*.keras
-*.h5
-*.pkl
+# Large model files (too large for git - EXCEPT ai-service)
+/*.keras
+/*.h5
+/*.pkl
+# Allow model files in ai-service folder for deployment
+!ai-service/*.keras
 
 # Build outputs
 dist/

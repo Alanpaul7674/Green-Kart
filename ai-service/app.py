@@ -26,6 +26,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
 from datetime import datetime
+import os
+import numpy as np
+
+# Try to load TensorFlow/Keras for ML model
+try:
+    import tensorflow as tf
+    from tensorflow import keras
+    KERAS_AVAILABLE = True
+    print("✅ TensorFlow/Keras loaded successfully")
+except ImportError:
+    KERAS_AVAILABLE = False
+    print("⚠️ TensorFlow not available - using formula-based calculations")
 
 # Import our custom carbon footprint calculator module
 from carbon_calculator import (
@@ -35,6 +47,37 @@ from carbon_calculator import (
     TRANSPORT_EMISSION_FACTORS,
     PACKAGING_EMISSION_FACTORS
 )
+
+# ==============================================================================
+# LOAD KERAS MODEL
+# ==============================================================================
+
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "cfp_model.keras")
+cfp_model = None
+
+def load_keras_model():
+    """Load the Carbon Footprint Prediction Keras model."""
+    global cfp_model
+    if KERAS_AVAILABLE and os.path.exists(MODEL_PATH):
+        try:
+            cfp_model = keras.models.load_model(MODEL_PATH)
+            print(f"✅ Loaded Keras model from {MODEL_PATH}")
+            print(f"   Model input shape: {cfp_model.input_shape}")
+            print(f"   Model output shape: {cfp_model.output_shape}")
+            return True
+        except Exception as e:
+            print(f"❌ Error loading Keras model: {e}")
+            cfp_model = None
+            return False
+    else:
+        if not KERAS_AVAILABLE:
+            print("⚠️ TensorFlow not installed - model not loaded")
+        elif not os.path.exists(MODEL_PATH):
+            print(f"⚠️ Model file not found at {MODEL_PATH}")
+        return False
+
+# Load model at startup
+load_keras_model()
 
 # ==============================================================================
 # FASTAPI APPLICATION INITIALIZATION
@@ -79,6 +122,8 @@ app.add_middleware(
         "http://localhost:5175",   # Vite alternate port
         "http://localhost:3000",   # React/Next.js default
         "http://localhost:5001",   # Backend server
+        "https://greenkart-gules.vercel.app",  # Production frontend
+        "https://green-kart.onrender.com",     # Production backend
     ],
     allow_credentials=True,
     allow_methods=["*"],           # Allow all HTTP methods
@@ -245,7 +290,12 @@ async def health_check():
         "timestamp": datetime.now().isoformat(),
         "service": "greenkart-ai",
         "version": "2.0.0",
-        "features": ["carbon_calculator", "eco_score", "recommendations"]
+        "features": ["carbon_calculator", "eco_score", "recommendations"],
+        "keras_model": {
+            "loaded": cfp_model is not None,
+            "tensorflow_available": KERAS_AVAILABLE,
+            "model_path": MODEL_PATH if cfp_model else None
+        }
     }
 
 
@@ -539,16 +589,86 @@ COUNTRY_TRANSPORT_AI = {
     'Canada': {'mode': 'sea', 'factor': 0.000016},
 }
 
+# Material encoding for Keras model input
+MATERIAL_ENCODING = {
+    'cotton': 0,
+    'polyester': 1,
+    'recycled': 2,
+    'organic cotton': 0,  # Map to cotton
+    'wool': 1,  # Map to polyester (similar impact)
+    'nylon': 1,  # Map to polyester
+    'silk': 1,  # Map to polyester
+}
+
+# Country encoding for Keras model input
+COUNTRY_ENCODING = {
+    'india': 0, 'china': 1, 'usa': 2, 'uk': 3, 'germany': 4,
+    'france': 5, 'italy': 6, 'brazil': 7, 'canada': 8, 'australia': 9,
+    'united states': 2, 'united kingdom': 3,
+}
+
+
+def predict_with_keras_model(material: str, weight: float, distance: float, waste_percent: float, country: str):
+    """
+    Use the Keras model to predict carbon footprint.
+    Returns (carbon_footprint, eco_score) or None if model not available.
+    """
+    global cfp_model
+    if cfp_model is None:
+        return None
+    
+    try:
+        # Encode material
+        material_encoded = MATERIAL_ENCODING.get(material.lower().strip(), 0)
+        
+        # Encode country
+        country_encoded = COUNTRY_ENCODING.get(country.lower().strip(), 0)
+        
+        # Prepare input array - adjust based on your model's expected input
+        # Common format: [material_encoded, weight, distance, waste_percent, country_encoded]
+        input_data = np.array([[
+            material_encoded,
+            weight,
+            distance,
+            waste_percent,
+            country_encoded
+        ]], dtype=np.float32)
+        
+        # Get prediction from model
+        prediction = cfp_model.predict(input_data, verbose=0)
+        
+        # Extract carbon footprint from prediction
+        if isinstance(prediction, np.ndarray):
+            carbon_footprint = float(prediction[0][0]) if prediction.shape[1] >= 1 else float(prediction[0])
+            # If model outputs eco_score as second value
+            eco_score = float(prediction[0][1]) if prediction.shape[1] >= 2 else None
+        else:
+            carbon_footprint = float(prediction)
+            eco_score = None
+        
+        return {
+            'carbon_footprint': round(max(0, carbon_footprint), 2),
+            'eco_score': int(max(0, min(100, eco_score))) if eco_score else None,
+            'model_used': True
+        }
+    except Exception as e:
+        print(f"Keras prediction error: {e}")
+        return None
+
 
 def calculate_ai_eco_score(material: str, weight: float, distance: float, waste_percent: float, country: str):
     """
     AI Model for calculating eco score based on the sustainability dataset.
     
-    The model uses a weighted scoring algorithm:
+    Uses Keras model if available, otherwise falls back to weighted scoring algorithm:
     - Material Score (40%): Based on material emission factors
     - Transport Score (30%): Based on distance and transport mode
     - Waste Score (30%): Based on manufacturing waste percentage
     """
+    # Try Keras model first
+    keras_result = predict_with_keras_model(material, weight, distance, waste_percent, country)
+    model_used = keras_result is not None
+    
     # Normalize material name
     material_lower = material.lower().strip()
     
@@ -570,11 +690,14 @@ def calculate_ai_eco_score(material: str, weight: float, distance: float, waste_
     # Calculate waste score (lower waste = higher score)
     waste_score = max(0, min(100, int(100 - (waste_percent * 4))))
     
-    # Calculate carbon footprint
-    material_impact = material_factor * weight
-    transport_impact = transport_factor * weight * distance
-    packaging_impact = 0.15 if waste_percent <= 10 else 0.25 if waste_percent <= 15 else 0.35
-    total_carbon = round(material_impact + transport_impact + packaging_impact, 2)
+    # Calculate carbon footprint - USE KERAS MODEL IF AVAILABLE
+    if keras_result and 'carbon_footprint' in keras_result:
+        total_carbon = keras_result['carbon_footprint']
+    else:
+        material_impact = material_factor * weight
+        transport_impact = transport_factor * weight * distance
+        packaging_impact = 0.15 if waste_percent <= 10 else 0.25 if waste_percent <= 15 else 0.35
+        total_carbon = round(material_impact + transport_impact + packaging_impact, 2)
     
     # Determine impact level
     if total_carbon <= 2.0:
@@ -626,6 +749,8 @@ def calculate_ai_eco_score(material: str, weight: float, distance: float, waste_
         'waste_score': waste_score,
         'recommendations': recommendations,
         'sustainability_grade': grade,
+        'model_used': model_used,
+        'prediction_method': 'keras_model' if model_used else 'formula_based',
     }
 
 
