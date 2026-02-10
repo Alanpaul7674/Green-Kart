@@ -79,6 +79,16 @@ const Navbar = () => {
               Products
             </Link>
             
+            {/* Admin Add Product Link */}
+            <Link
+              to="/admin/add-product"
+              className={`text-white font-medium transition-all duration-200 hover:text-green-200 flex items-center gap-1 ${
+                isActiveLink('/admin/add-product') ? 'border-b-2 border-white pb-1' : ''
+              }`}
+            >
+              <span className="text-sm">🤖</span> Add Product
+            </Link>
+            
             {isAuthenticated ? (
               <>
                 <span className="text-green-100">
