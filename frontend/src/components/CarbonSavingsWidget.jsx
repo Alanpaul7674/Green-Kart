@@ -15,24 +15,29 @@ const CarbonSavingsWidget = () => {
   const [carbonSaved, setCarbonSaved] = useState(0);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
 
-  // Get user-specific storage key
+  // Get user-specific storage key - consistent with Checkout.jsx
   const getUserStorageKey = () => {
-    if (user?.id || user?.uid || user?.email) {
-      return `purchaseHistory_${user.id || user.uid || user.email}`;
+    const userId = user?.id || user?.uid || user?.email;
+    if (userId) {
+      return `purchaseHistory_${userId}`;
     }
     return null;
   };
 
-  // Calculate carbon savings from cart and purchase history
+  // Load purchase history from localStorage (user-specific)
   useEffect(() => {
-    // Get purchase history from localStorage (user-specific)
     const storageKey = getUserStorageKey();
     if (storageKey) {
-      const savedPurchases = localStorage.getItem(storageKey);
-      if (savedPurchases) {
-        setPurchaseHistory(JSON.parse(savedPurchases));
-      } else {
-        // No purchases for this user yet
+      try {
+        const savedPurchases = localStorage.getItem(storageKey);
+        if (savedPurchases) {
+          const parsed = JSON.parse(savedPurchases);
+          setPurchaseHistory(Array.isArray(parsed) ? parsed : []);
+        } else {
+          setPurchaseHistory([]);
+        }
+      } catch (e) {
+        console.error('Error loading purchase history:', e);
         setPurchaseHistory([]);
       }
     } else {

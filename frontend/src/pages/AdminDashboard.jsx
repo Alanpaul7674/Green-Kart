@@ -455,7 +455,8 @@ const AdminDashboard = () => {
       )}
 
       <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Main Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           <div className="bg-white p-4 rounded-lg shadow">
             <p className="text-3xl font-bold text-gray-800">{products.length}</p>
             <p className="text-gray-500">Total Products</p>
@@ -464,19 +465,39 @@ const AdminDashboard = () => {
             <p className="text-3xl font-bold text-green-600">
               {products.filter(p => p.carbonImpactLevel === 'Low').length}
             </p>
-            <p className="text-gray-500">Low Impact</p>
+            <p className="text-gray-500">🌿 Low Impact</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <p className="text-3xl font-bold text-yellow-600">
               {products.filter(p => p.carbonImpactLevel === 'Medium').length}
             </p>
-            <p className="text-gray-500">Medium Impact</p>
+            <p className="text-gray-500">🌱 Medium Impact</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <p className="text-3xl font-bold text-red-600">
               {products.filter(p => p.carbonImpactLevel === 'High').length}
             </p>
-            <p className="text-gray-500">High Impact</p>
+            <p className="text-gray-500">⚠️ High Impact</p>
+          </div>
+        </div>
+        
+        {/* Category Stats */}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3">📊 Products by Category</h3>
+          <div className="flex flex-wrap gap-2">
+            {categories.map(cat => {
+              const count = products.filter(p => p.category === cat).length;
+              return (
+                <span
+                  key={cat}
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    count > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  {cat}: <strong>{count}</strong>
+                </span>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getProducts } from '../services/productApi';
+import { getProducts, getCarbonStats } from '../services/productApi';
 import { EcoScoreRing } from '../components/CarbonBadge';
 
 const Home = () => {
@@ -15,11 +15,18 @@ const Home = () => {
   const navigate = useNavigate();
   const [ecoProducts, setEcoProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalProducts: 0,
+    byCategory: {},
+    byImpactLevel: { Low: 0, Medium: 0, High: 0 },
+    averageEcoScore: 0,
+  });
 
-  // Fetch lowest carbon footprint products
+  // Fetch stats and lowest carbon footprint products
   useEffect(() => {
-    const fetchEcoProducts = async () => {
+    const fetchData = async () => {
       try {
+        // Fetch products
         const response = await getProducts({ 
           sortBy: 'carbonFootprint', 
           order: 'asc', 
@@ -29,13 +36,19 @@ const Home = () => {
         if (response.success && response.data?.products) {
           setEcoProducts(response.data.products);
         }
+        
+        // Fetch stats
+        const statsResponse = await getCarbonStats();
+        if (statsResponse.success && statsResponse.data) {
+          setStats(statsResponse.data);
+        }
       } catch (error) {
-        console.error('Failed to fetch eco products:', error);
+        console.error('Failed to fetch data:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchEcoProducts();
+    fetchData();
   }, []);
 
   const handleGetStarted = () => {
@@ -242,6 +255,56 @@ const Home = () => {
               </p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Live Stats Section */}
+      <section className="py-12 bg-gradient-to-r from-green-600 to-emerald-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              Our Sustainable Collection
+            </h2>
+            <p className="text-green-100">Real-time product statistics</p>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center">
+              <p className="text-3xl md:text-4xl font-bold text-white">{stats.totalProducts}</p>
+              <p className="text-green-100 text-sm">Total Products</p>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center">
+              <p className="text-3xl md:text-4xl font-bold text-green-300">{stats.byImpactLevel?.Low || 0}</p>
+              <p className="text-green-100 text-sm">🌿 Low Impact</p>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center">
+              <p className="text-3xl md:text-4xl font-bold text-yellow-300">{stats.byImpactLevel?.Medium || 0}</p>
+              <p className="text-green-100 text-sm">🌱 Medium Impact</p>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center">
+              <p className="text-3xl md:text-4xl font-bold text-red-300">{stats.byImpactLevel?.High || 0}</p>
+              <p className="text-green-100 text-sm">⚠️ High Impact</p>
+            </div>
+            <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center">
+              <p className="text-3xl md:text-4xl font-bold text-white">{Object.keys(stats.byCategory || {}).length}</p>
+              <p className="text-green-100 text-sm">Categories</p>
+            </div>
+          </div>
+          
+          {/* Category breakdown */}
+          {stats.byCategory && Object.keys(stats.byCategory).length > 0 && (
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {Object.entries(stats.byCategory).map(([category, data]) => (
+                <Link
+                  key={category}
+                  to={`/products?category=${category}`}
+                  className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 text-white text-sm transition-colors"
+                >
+                  {category}: <span className="font-bold">{data.count}</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
