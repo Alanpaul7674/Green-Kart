@@ -119,6 +119,7 @@ function calculateCarbon(product) {
   const distance = parseFloat(product.transport_distance);
   const country = product.countryname;
   const wastePercent = parseFloat(product.waste_percent);
+  const cValue = parseFloat(product.c_value); // Carbon value from AI model
   
   const materialFactor = MATERIAL_FACTORS[material] || 3.0;
   const transportMode = COUNTRY_TRANSPORT[country] || 'road';
@@ -135,12 +136,13 @@ function calculateCarbon(product) {
   const packagingFactors = { recycled: 0.10, paper: 0.25, cardboard: 0.20 };
   const packagingImpact = packagingFactors[packagingType];
   
-  const totalCarbonFootprint = parseFloat((materialImpact + transportImpact + packagingImpact).toFixed(2));
+  // Use c_value from CSV if available, otherwise calculate
+  const totalCarbonFootprint = cValue > 0 ? cValue : parseFloat((materialImpact + transportImpact + packagingImpact).toFixed(2));
   
   let carbonImpactLevel;
-  if (totalCarbonFootprint <= 2.0) {
+  if (totalCarbonFootprint <= 5.0) {
     carbonImpactLevel = 'Low';
-  } else if (totalCarbonFootprint <= 5.0) {
+  } else if (totalCarbonFootprint <= 15.0) {
     carbonImpactLevel = 'Medium';
   } else {
     carbonImpactLevel = 'High';
@@ -167,6 +169,7 @@ function calculateCarbon(product) {
     carbonImpactLevel,
     ecoScore: Math.min(100, Math.max(0, ecoScore)),
     wastePercent,
+    cValue, // Original c_value from dataset
   };
 }
 
@@ -198,11 +201,12 @@ productsWithImages.forEach(csvProduct => {
   products.push({
     id: id++,
     productId: csvProduct.prod_id,
-    name: `${csvProduct.pname} - ${csvProduct.colour} ${csvProduct.material.charAt(0).toUpperCase() + csvProduct.material.slice(1)}`,
+    name: csvProduct.pname, // Original product name from dataset
+    displayName: `${csvProduct.pname} - ${csvProduct.colour} ${csvProduct.material.charAt(0).toUpperCase() + csvProduct.material.slice(1)}`,
     category: csvProduct.category,
     price: generatePrice(csvProduct.pname),
     originalPrice: null,
-    description: DESCRIPTIONS[csvProduct.pname] || `Sustainable ${csvProduct.pname.toLowerCase()} made with eco-friendly ${csvProduct.material}.`,
+    description: DESCRIPTIONS[csvProduct.pname] || `Sustainable ${csvProduct.pname.toLowerCase()} made with eco-friendly ${csvProduct.material}. Origin: ${csvProduct.countryname}.`,
     image: `/images/${imageFile}`,
     images: [`/images/${imageFile}`],
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
@@ -214,6 +218,7 @@ productsWithImages.forEach(csvProduct => {
     rating: parseFloat((3.5 + Math.random() * 1.5).toFixed(1)),
     reviews: Math.floor(Math.random() * 200) + 10,
     materialType: carbon.materialType,
+    material: csvProduct.material, // Original material from dataset
     productWeightKg: carbon.productWeightKg,
     distanceKm: carbon.distanceKm,
     transportMode: carbon.transportMode,
@@ -221,11 +226,14 @@ productsWithImages.forEach(csvProduct => {
     materialImpact: carbon.materialImpact,
     transportImpact: carbon.transportImpact,
     packagingImpact: carbon.packagingImpact,
-    carbonFootprint: carbon.totalCarbonFootprint,
+    totalCarbonFootprint: carbon.totalCarbonFootprint, // Use c_value from CSV
+    carbonFootprint: carbon.totalCarbonFootprint, // Alias for compatibility
     carbonImpactLevel: carbon.carbonImpactLevel,
     ecoScore: carbon.ecoScore,
     wastePercent: carbon.wastePercent,
-    countryOfOrigin: csvProduct.countryname,
+    countryOfOrigin: csvProduct.countryname, // Country from dataset
+    country: csvProduct.countryname, // Alias
+    cValue: carbon.cValue, // Original AI model value
     sustainabilityFeatures: [
       carbon.materialType === 'recycled' ? 'Made from recycled materials' : `Made with sustainable ${carbon.materialType}`,
       carbon.carbonImpactLevel === 'Low' ? 'Low carbon footprint' : 'Reduced carbon emissions',
@@ -237,6 +245,7 @@ productsWithImages.forEach(csvProduct => {
       csvProduct.colour.toLowerCase(),
       csvProduct.material,
       csvProduct.category.toLowerCase(),
+      csvProduct.countryname.toLowerCase(),
       'sustainable',
       'eco-friendly',
     ],
@@ -255,11 +264,12 @@ remainingProducts.slice(0, 200).forEach((csvProduct, index) => {
   products.push({
     id: id++,
     productId: csvProduct.prod_id,
-    name: `${csvProduct.pname} - ${csvProduct.colour} ${csvProduct.material.charAt(0).toUpperCase() + csvProduct.material.slice(1)}`,
+    name: csvProduct.pname, // Original product name from dataset
+    displayName: `${csvProduct.pname} - ${csvProduct.colour} ${csvProduct.material.charAt(0).toUpperCase() + csvProduct.material.slice(1)}`,
     category: csvProduct.category,
     price: generatePrice(csvProduct.pname),
     originalPrice: null,
-    description: DESCRIPTIONS[csvProduct.pname] || `Sustainable ${csvProduct.pname.toLowerCase()} made with eco-friendly ${csvProduct.material}.`,
+    description: DESCRIPTIONS[csvProduct.pname] || `Sustainable ${csvProduct.pname.toLowerCase()} made with eco-friendly ${csvProduct.material}. Origin: ${csvProduct.countryname}.`,
     image: `/images/${placeholderImage}`,
     images: [`/images/${placeholderImage}`],
     sizes: ['S', 'M', 'L', 'XL', 'XXL'],
@@ -271,6 +281,7 @@ remainingProducts.slice(0, 200).forEach((csvProduct, index) => {
     rating: parseFloat((3.5 + Math.random() * 1.5).toFixed(1)),
     reviews: Math.floor(Math.random() * 200) + 10,
     materialType: carbon.materialType,
+    material: csvProduct.material, // Original material from dataset
     productWeightKg: carbon.productWeightKg,
     distanceKm: carbon.distanceKm,
     transportMode: carbon.transportMode,
@@ -278,11 +289,14 @@ remainingProducts.slice(0, 200).forEach((csvProduct, index) => {
     materialImpact: carbon.materialImpact,
     transportImpact: carbon.transportImpact,
     packagingImpact: carbon.packagingImpact,
-    carbonFootprint: carbon.totalCarbonFootprint,
+    totalCarbonFootprint: carbon.totalCarbonFootprint, // Use c_value from CSV
+    carbonFootprint: carbon.totalCarbonFootprint, // Alias for compatibility
     carbonImpactLevel: carbon.carbonImpactLevel,
     ecoScore: carbon.ecoScore,
     wastePercent: carbon.wastePercent,
-    countryOfOrigin: csvProduct.countryname,
+    countryOfOrigin: csvProduct.countryname, // Country from dataset
+    country: csvProduct.countryname, // Alias
+    cValue: carbon.cValue, // Original AI model value
     sustainabilityFeatures: [
       carbon.materialType === 'recycled' ? 'Made from recycled materials' : `Made with sustainable ${carbon.materialType}`,
       carbon.carbonImpactLevel === 'Low' ? 'Low carbon footprint' : 'Reduced carbon emissions',
@@ -294,6 +308,7 @@ remainingProducts.slice(0, 200).forEach((csvProduct, index) => {
       csvProduct.colour.toLowerCase(),
       csvProduct.material,
       csvProduct.category.toLowerCase(),
+      csvProduct.countryname.toLowerCase(),
       'sustainable',
       'eco-friendly',
     ],

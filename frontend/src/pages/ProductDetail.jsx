@@ -155,19 +155,24 @@ const ProductDetail = () => {
             {/* Product Info */}
             <div className="p-8 flex flex-col">
               <div className="flex-1">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.displayName || product.name}</h1>
                 <p className="text-4xl font-bold text-green-600 mb-4">
                   ₹{product.price?.toLocaleString('en-IN')}
                 </p>
                 
                 {/* Material Badge */}
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex flex-wrap items-center gap-2 mb-4">
                   <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium capitalize">
                     {product.materialType?.replace('_', ' ')} Material
                   </span>
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium capitalize">
                     {product.transportMode} Transport
                   </span>
+                  {product.countryOfOrigin && (
+                    <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                      📍 {product.countryOfOrigin}
+                    </span>
+                  )}
                 </div>
                 
                 <p className="text-gray-600 mb-6 leading-relaxed">
@@ -291,6 +296,11 @@ const ProductDetail = () => {
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span className="text-gray-600">🧵 Material</span>
                 <span className="font-semibold capitalize">{product.materialType?.replace('_', ' ')}</span>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <span className="text-gray-600">🌍 Country of Origin</span>
+                <span className="font-semibold">{product.countryOfOrigin || product.country || 'India'}</span>
               </div>
               
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
