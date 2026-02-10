@@ -28,7 +28,7 @@ import Register from './pages/Register';
 import Products from './pages/Products';
 import ProductDetail from './pages/ProductDetail';
 import Checkout from './pages/Checkout';
-import AdminAddProduct from './pages/AdminAddProduct';
+import AdminDashboard from './pages/AdminDashboard';
 
 function App() {
   return (
@@ -55,8 +55,8 @@ function App() {
               {/* Checkout Page - Address, Payment, Confirmation */}
               <Route path="/checkout" element={<Checkout />} />
               
-              {/* Admin Add Product Page - Add new products with AI prediction */}
-              <Route path="/admin/add-product" element={<AdminAddProduct />} />
+              {/* Admin Dashboard - Full product management */}
+              <Route path="/admin" element={<AdminDashboard />} />
             </Routes>
           </Layout>
           <CartSidebar />

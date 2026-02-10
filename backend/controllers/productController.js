@@ -767,6 +767,130 @@ const createProduct = async (req, res) => {
   }
 };
 
+/**
+ * Update Product
+ * ===============
+ * Updates an existing product by ID.
+ * 
+ * @route PUT /api/products/:id
+ * @access Admin
+ */
+const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const productIndex = products.findIndex(p => p.id === parseInt(id));
+    
+    if (productIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found',
+      });
+    }
+
+    const existingProduct = products[productIndex];
+    const updates = req.body;
+
+    // If material/weight/transport changed, recalculate carbon footprint
+    let aiPrediction = null;
+    const needsRecalculation = updates.material || updates.weight || updates.transport_distance || updates.waste_percent;
+    
+    if (needsRecalculation) {
+      const aiServiceUrl = process.env.AI_SERVICE_URL || 'https://greenkart-ai.onrender.com';
+      
+      try {
+        const aiResponse = await axios.post(`${aiServiceUrl}/api/predict/eco-score`, {
+          material: (updates.material || existingProduct.material).toLowerCase(),
+          weight: parseFloat(updates.weight || existingProduct.productWeightKg || 0.5),
+          transport_distance: parseFloat(updates.transport_distance || existingProduct.distanceKm || 1000),
+          waste_percent: parseFloat(updates.waste_percent || existingProduct.wastePercent || 10),
+          country: updates.country || existingProduct.countryOfOrigin || 'India',
+        }, { timeout: 10000 });
+        
+        aiPrediction = aiResponse.data;
+        console.log('✅ AI Recalculation:', aiPrediction);
+      } catch (aiError) {
+        console.log('⚠️ AI service unavailable, keeping existing carbon data');
+      }
+    }
+
+    // Update product fields
+    const updatedProduct = {
+      ...existingProduct,
+      ...updates,
+      id: existingProduct.id, // Prevent ID change
+      productId: existingProduct.productId, // Prevent productId change
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Update carbon data if recalculated
+    if (aiPrediction) {
+      updatedProduct.totalCarbonFootprint = aiPrediction.carbon_footprint;
+      updatedProduct.carbonFootprint = aiPrediction.carbon_footprint;
+      updatedProduct.ecoScore = aiPrediction.eco_score;
+      updatedProduct.carbonImpactLevel = aiPrediction.impact_level;
+      updatedProduct.sustainabilityGrade = aiPrediction.sustainability_grade;
+      updatedProduct.cValue = aiPrediction.carbon_footprint;
+      updatedProduct.materialImpact = parseFloat((aiPrediction.carbon_footprint * 0.6).toFixed(2));
+      updatedProduct.transportImpact = parseFloat((aiPrediction.carbon_footprint * 0.3).toFixed(2));
+      updatedProduct.packagingImpact = parseFloat((aiPrediction.carbon_footprint * 0.1).toFixed(2));
+    }
+
+    products[productIndex] = updatedProduct;
+
+    res.status(200).json({
+      success: true,
+      message: 'Product updated successfully',
+      data: updatedProduct,
+      aiPrediction: aiPrediction || null,
+    });
+  } catch (error) {
+    console.error('Error updating product:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update product',
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Delete Product
+ * ==============
+ * Deletes a product by ID.
+ * 
+ * @route DELETE /api/products/:id
+ * @access Admin
+ */
+const deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const productIndex = products.findIndex(p => p.id === parseInt(id));
+    
+    if (productIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found',
+      });
+    }
+
+    const deletedProduct = products[productIndex];
+    products.splice(productIndex, 1);
+
+    res.status(200).json({
+      success: true,
+      message: 'Product deleted successfully',
+      data: { id: deletedProduct.id, name: deletedProduct.name },
+    });
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete product',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -776,4 +900,6 @@ module.exports = {
   getCategories,
   getSimilarProducts,
   createProduct,
+  updateProduct,
+  deleteProduct,
 };

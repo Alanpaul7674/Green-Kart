@@ -79,14 +79,14 @@ const Navbar = () => {
               Products
             </Link>
             
-            {/* Admin Add Product Link */}
+            {/* Admin Dashboard Link */}
             <Link
-              to="/admin/add-product"
-              className={`text-white font-medium transition-all duration-200 hover:text-green-200 flex items-center gap-1 ${
-                isActiveLink('/admin/add-product') ? 'border-b-2 border-white pb-1' : ''
+              to="/admin"
+              className={`text-white font-medium transition-all duration-200 hover:text-green-200 flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full ${
+                isActiveLink('/admin') ? 'border-b-2 border-white' : ''
               }`}
             >
-              <span className="text-sm">🤖</span> Add Product
+              <span className="text-sm">⚙️</span> Admin
             </Link>
             
             {isAuthenticated ? (
@@ -182,6 +182,17 @@ const Navbar = () => {
               }`}
             >
               Products
+            </Link>
+            
+            {/* Admin Dashboard - Mobile */}
+            <Link
+              to="/admin"
+              onClick={() => setIsMenuOpen(false)}
+              className={`block py-2 text-white font-medium hover:bg-green-700 px-4 rounded transition-colors ${
+                isActiveLink('/admin') ? 'bg-green-700' : ''
+              }`}
+            >
+              ⚙️ Admin Dashboard
             </Link>
             
             {isAuthenticated ? (
