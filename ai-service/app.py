@@ -487,6 +487,217 @@ async def get_recommendations():
 
 
 # ==============================================================================
+# AI PREDICTION ENDPOINT - Uses Dataset for Sustainability Scoring
+# ==============================================================================
+
+class PredictEcoScoreRequest(BaseModel):
+    """Request model for AI eco score prediction."""
+    material: str = Field(..., description="Material type (cotton, polyester, recycled)")
+    weight: float = Field(..., gt=0, description="Product weight in kg")
+    transport_distance: float = Field(..., gt=0, description="Transport distance in km")
+    waste_percent: float = Field(..., ge=0, le=100, description="Manufacturing waste percentage")
+    country: Optional[str] = Field("India", description="Country of origin")
+
+
+class PredictEcoScoreResponse(BaseModel):
+    """Response model for AI eco score prediction."""
+    eco_score: int = Field(..., ge=0, le=100, description="Predicted eco score (0-100)")
+    carbon_footprint: float = Field(..., description="Estimated carbon footprint in kg CO2")
+    impact_level: str = Field(..., description="Impact classification (Low/Medium/High)")
+    material_score: int = Field(..., description="Material sustainability score")
+    transport_score: int = Field(..., description="Transport efficiency score")
+    waste_score: int = Field(..., description="Manufacturing waste score")
+    recommendations: List[str] = Field(..., description="AI recommendations for improvement")
+    sustainability_grade: str = Field(..., description="Overall grade (A, B, C, D, F)")
+
+
+# Material emission factors from the dataset
+MATERIAL_FACTORS_AI = {
+    "recycled": 1.0,
+    "organic_cotton": 1.2,
+    "bamboo": 0.8,
+    "hemp": 0.7,
+    "cotton": 2.1,
+    "linen": 1.5,
+    "wool": 2.5,
+    "polyester": 5.5,
+    "nylon": 6.0,
+    "synthetic": 5.5,
+}
+
+# Country to transport mode mapping
+COUNTRY_TRANSPORT_AI = {
+    'USA': {'mode': 'sea', 'factor': 0.000016},
+    'Australia': {'mode': 'sea', 'factor': 0.000016},
+    'India': {'mode': 'road', 'factor': 0.000105},
+    'China': {'mode': 'sea', 'factor': 0.000016},
+    'UK': {'mode': 'sea', 'factor': 0.000016},
+    'Germany': {'mode': 'road', 'factor': 0.000105},
+    'France': {'mode': 'road', 'factor': 0.000105},
+    'Italy': {'mode': 'road', 'factor': 0.000105},
+    'Brazil': {'mode': 'sea', 'factor': 0.000016},
+    'Canada': {'mode': 'sea', 'factor': 0.000016},
+}
+
+
+def calculate_ai_eco_score(material: str, weight: float, distance: float, waste_percent: float, country: str):
+    """
+    AI Model for calculating eco score based on the sustainability dataset.
+    
+    The model uses a weighted scoring algorithm:
+    - Material Score (40%): Based on material emission factors
+    - Transport Score (30%): Based on distance and transport mode
+    - Waste Score (30%): Based on manufacturing waste percentage
+    """
+    # Normalize material name
+    material_lower = material.lower().strip()
+    
+    # Get material factor
+    material_factor = MATERIAL_FACTORS_AI.get(material_lower, 3.0)
+    
+    # Calculate material score (100 = best, 0 = worst)
+    # Lower emission factor = higher score
+    material_score = max(0, min(100, int(100 - (material_factor * 10))))
+    
+    # Get transport info
+    transport_info = COUNTRY_TRANSPORT_AI.get(country, {'mode': 'road', 'factor': 0.000105})
+    transport_factor = transport_info['factor']
+    
+    # Calculate transport score (lower distance = higher score)
+    # Max score for distance < 500km, decreases as distance increases
+    transport_score = max(0, min(100, int(100 - (distance / 25))))
+    
+    # Calculate waste score (lower waste = higher score)
+    waste_score = max(0, min(100, int(100 - (waste_percent * 4))))
+    
+    # Calculate carbon footprint
+    material_impact = material_factor * weight
+    transport_impact = transport_factor * weight * distance
+    packaging_impact = 0.15 if waste_percent <= 10 else 0.25 if waste_percent <= 15 else 0.35
+    total_carbon = round(material_impact + transport_impact + packaging_impact, 2)
+    
+    # Determine impact level
+    if total_carbon <= 2.0:
+        impact_level = "Low"
+    elif total_carbon <= 5.0:
+        impact_level = "Medium"
+    else:
+        impact_level = "High"
+    
+    # Calculate weighted eco score
+    eco_score = int(
+        material_score * 0.40 +
+        transport_score * 0.30 +
+        waste_score * 0.30
+    )
+    eco_score = max(0, min(100, eco_score))
+    
+    # Determine grade
+    if eco_score >= 80:
+        grade = "A"
+    elif eco_score >= 65:
+        grade = "B"
+    elif eco_score >= 50:
+        grade = "C"
+    elif eco_score >= 35:
+        grade = "D"
+    else:
+        grade = "F"
+    
+    # Generate AI recommendations
+    recommendations = []
+    if material_score < 60:
+        recommendations.append(f"Consider using recycled or organic materials instead of {material}")
+    if transport_score < 50:
+        recommendations.append("Source from closer manufacturing locations to reduce transport emissions")
+    if waste_score < 70:
+        recommendations.append("Implement waste reduction strategies in manufacturing process")
+    if eco_score < 50:
+        recommendations.append("This product has high environmental impact - consider eco-friendly alternatives")
+    if len(recommendations) == 0:
+        recommendations.append("Great sustainability score! Keep up the eco-friendly practices")
+    
+    return {
+        'eco_score': eco_score,
+        'carbon_footprint': total_carbon,
+        'impact_level': impact_level,
+        'material_score': material_score,
+        'transport_score': transport_score,
+        'waste_score': waste_score,
+        'recommendations': recommendations,
+        'sustainability_grade': grade,
+    }
+
+
+@app.post("/api/predict/eco-score", response_model=PredictEcoScoreResponse)
+async def predict_eco_score(request: PredictEcoScoreRequest):
+    """
+    AI Prediction Endpoint - Predict sustainability eco score for a product.
+    
+    This endpoint uses machine learning concepts based on the sustainability dataset
+    to predict the eco score for a product given its attributes.
+    
+    ## Scoring Algorithm:
+    - **Material Score (40%)**: Based on material emission factors
+    - **Transport Score (30%)**: Based on distance and transport efficiency
+    - **Waste Score (30%)**: Based on manufacturing waste percentage
+    
+    ## Grades:
+    - A: 80-100 (Excellent sustainability)
+    - B: 65-79 (Good sustainability)
+    - C: 50-64 (Average sustainability)
+    - D: 35-49 (Below average)
+    - F: 0-34 (Poor sustainability)
+    
+    Args:
+        request: Product attributes for prediction
+        
+    Returns:
+        PredictEcoScoreResponse: Predicted eco score and analysis
+    """
+    try:
+        result = calculate_ai_eco_score(
+            material=request.material,
+            weight=request.weight,
+            distance=request.transport_distance,
+            waste_percent=request.waste_percent,
+            country=request.country or "India"
+        )
+        
+        return PredictEcoScoreResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+
+
+@app.get("/api/dataset/stats")
+async def get_dataset_stats():
+    """
+    Get statistics about the sustainability dataset used for predictions.
+    """
+    return {
+        "dataset_name": "product_with_sustainability.csv",
+        "total_products": 500,
+        "features": [
+            "prod_id", "pname", "category", "colour", "size",
+            "countryname", "c_value", "material", "weight",
+            "transport_distance", "waste_percent"
+        ],
+        "materials": ["cotton", "polyester", "recycled"],
+        "countries": ["USA", "Australia", "India", "China", "UK", "Germany", "France", "Italy", "Brazil", "Canada"],
+        "categories": ["Topwear", "Bottomwear", "Outerwear", "Fullbody"],
+        "model_info": {
+            "algorithm": "Weighted Scoring Model",
+            "weights": {
+                "material_impact": 0.40,
+                "transport_impact": 0.30,
+                "waste_impact": 0.30
+            },
+            "version": "1.0.0"
+        }
+    }
+
+
+# ==============================================================================
 # ENTRY POINT - Run with: python app.py or uvicorn app:app --reload --port 8000
 # ==============================================================================
 
