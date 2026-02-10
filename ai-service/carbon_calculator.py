@@ -252,27 +252,30 @@ class CarbonFootprintCalculator:
         Calculate an eco-friendliness score (0-100).
         Higher score = more eco-friendly.
         
-        Uses logarithmic scaling to map footprint to score:
-        - 0 kg CO2 = 100 score
-        - 10+ kg CO2 = ~0 score
+        Uses linear scaling based on carbon footprint:
+        EcoScore = ((maxCFP - predictedCFP) / (maxCFP - minCFP)) × 100
+        
+        Where:
+        - minCFP = 1.0 (lowest carbon footprint in dataset)
+        - maxCFP = 20.0 (highest carbon footprint in dataset)
         
         Args:
-            total_footprint: Total CO2 in kg
+            total_footprint: Total CO2 in kg (predictedCFP)
             
         Returns:
             Eco score from 0 to 100
         """
-        if total_footprint <= 0:
-            return 100
+        # Min and max carbon footprint values from the dataset
+        min_cfp = 1.0   # Minimum CFP in dataset (~1.1)
+        max_cfp = 20.0  # Maximum CFP in dataset (~19.87)
         
-        # Logarithmic decay: score decreases as footprint increases
-        # Max footprint for calculation purposes = 10 kg
-        max_footprint = 10.0
-        normalized = min(total_footprint / max_footprint, 1.0)
+        # Clamp the footprint to valid range
+        clamped_footprint = max(min_cfp, min(max_cfp, total_footprint))
         
-        # Apply exponential decay for scoring
-        score = int(100 * math.exp(-2.5 * normalized))
-        return max(0, min(100, score))
+        # Apply the EcoScore formula: (maxCFP - predictedCFP) / (maxCFP - minCFP) × 100
+        score = ((max_cfp - clamped_footprint) / (max_cfp - min_cfp)) * 100
+        
+        return max(0, min(100, int(round(score))))
     
     def _generate_recommendations(
         self, 

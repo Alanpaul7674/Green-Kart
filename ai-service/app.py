@@ -707,12 +707,16 @@ def calculate_ai_eco_score(material: str, weight: float, distance: float, waste_
     else:
         impact_level = "High"
     
-    # Calculate weighted eco score
-    eco_score = int(
-        material_score * 0.40 +
-        transport_score * 0.30 +
-        waste_score * 0.30
-    )
+    # Calculate EcoScore using the formula: (maxCFP - predictedCFP) / (maxCFP - minCFP) × 100
+    # Where minCFP = 1.0 and maxCFP = 20.0 (based on dataset range)
+    min_cfp = 1.0   # Minimum carbon footprint in dataset
+    max_cfp = 20.0  # Maximum carbon footprint in dataset
+    
+    # Clamp the carbon footprint to the valid range
+    clamped_carbon = max(min_cfp, min(max_cfp, total_carbon))
+    
+    # Apply the EcoScore formula
+    eco_score = int(round(((max_cfp - clamped_carbon) / (max_cfp - min_cfp)) * 100))
     eco_score = max(0, min(100, eco_score))
     
     # Determine grade
