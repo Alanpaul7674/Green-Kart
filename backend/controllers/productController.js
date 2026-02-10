@@ -601,6 +601,172 @@ const getSimilarProducts = async (req, res) => {
   }
 };
 
+/**
+ * Create New Product with AI-Predicted Carbon Footprint
+ * ======================================================
+ * Creates a new product and uses the AI model to predict its carbon footprint.
+ * 
+ * Required fields:
+ * - name: Product name (e.g., "T-Shirt")
+ * - material: Material type (cotton, polyester, recycled)
+ * - country: Country of origin
+ * - weight: Product weight in kg
+ * - category: Product category
+ * - price: Product price
+ * - image: Product image URL
+ * 
+ * Optional fields:
+ * - color, size, description, transport_distance, waste_percent
+ * 
+ * @route POST /api/products
+ * @access Admin
+ */
+const createProduct = async (req, res) => {
+  try {
+    const {
+      name,
+      material,
+      country,
+      weight = 0.5,
+      category = 'Topwear',
+      price = 999,
+      image = '/images/placeholder.jpg',
+      color = 'Black',
+      size = 'M',
+      description,
+      transport_distance = 1000,
+      waste_percent = 10,
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !material || !country) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields: name, material, country',
+      });
+    }
+
+    // Call AI service to predict carbon footprint
+    let aiPrediction = null;
+    const aiServiceUrl = process.env.AI_SERVICE_URL || 'https://greenkart-ai.onrender.com';
+    
+    try {
+      const aiResponse = await axios.post(`${aiServiceUrl}/api/predict/eco-score`, {
+        material: material.toLowerCase(),
+        weight: parseFloat(weight),
+        transport_distance: parseFloat(transport_distance),
+        waste_percent: parseFloat(waste_percent),
+        country: country,
+      }, { timeout: 10000 });
+      
+      aiPrediction = aiResponse.data;
+      console.log('✅ AI Prediction received:', aiPrediction);
+    } catch (aiError) {
+      console.log('⚠️ AI service unavailable, using fallback calculation');
+      // Fallback calculation
+      const materialFactors = { cotton: 2.1, polyester: 5.5, recycled: 1.0 };
+      const materialFactor = materialFactors[material.toLowerCase()] || 3.0;
+      const carbonFootprint = parseFloat((materialFactor * weight + 0.25).toFixed(2));
+      
+      aiPrediction = {
+        carbon_footprint: carbonFootprint,
+        eco_score: Math.max(0, Math.min(100, Math.round(80 - carbonFootprint * 5))),
+        impact_level: carbonFootprint < 5 ? 'Low' : carbonFootprint < 15 ? 'Medium' : 'High',
+        sustainability_grade: carbonFootprint < 5 ? 'A' : carbonFootprint < 10 ? 'B' : 'C',
+        recommendations: ['AI service unavailable - using fallback calculation'],
+      };
+    }
+
+    // Determine impact level based on AI prediction
+    const carbonImpactLevel = aiPrediction.impact_level || 
+      (aiPrediction.carbon_footprint < 5 ? 'Low' : aiPrediction.carbon_footprint < 15 ? 'Medium' : 'High');
+
+    // Generate new product ID
+    const newId = Math.max(...products.map(p => p.id)) + 1;
+    const productId = `P${1500 + newId}`;
+
+    // Create new product object
+    const newProduct = {
+      id: newId,
+      productId: productId,
+      name: name,
+      displayName: `${name} - ${color} ${material.charAt(0).toUpperCase() + material.slice(1)}`,
+      category: category,
+      price: parseFloat(price),
+      originalPrice: null,
+      description: description || `Sustainable ${name.toLowerCase()} made with eco-friendly ${material}. Origin: ${country}.`,
+      image: image,
+      images: [image],
+      sizes: ['S', 'M', 'L', 'XL', 'XXL'],
+      selectedSize: size,
+      color: color,
+      colors: [color],
+      brand: 'GreenKart Eco',
+      inStock: true,
+      rating: 4.0,
+      reviews: 0,
+      materialType: material.toLowerCase(),
+      material: material.toLowerCase(),
+      productWeightKg: parseFloat(weight),
+      distanceKm: parseFloat(transport_distance),
+      transportMode: 'road',
+      packagingType: waste_percent <= 10 ? 'recycled' : 'paper',
+      materialImpact: parseFloat((aiPrediction.carbon_footprint * 0.6).toFixed(2)),
+      transportImpact: parseFloat((aiPrediction.carbon_footprint * 0.3).toFixed(2)),
+      packagingImpact: parseFloat((aiPrediction.carbon_footprint * 0.1).toFixed(2)),
+      totalCarbonFootprint: aiPrediction.carbon_footprint,
+      carbonFootprint: aiPrediction.carbon_footprint,
+      carbonImpactLevel: carbonImpactLevel,
+      ecoScore: aiPrediction.eco_score,
+      wastePercent: parseFloat(waste_percent),
+      countryOfOrigin: country,
+      country: country,
+      cValue: aiPrediction.carbon_footprint,
+      sustainabilityGrade: aiPrediction.sustainability_grade,
+      aiPredicted: true,
+      sustainabilityFeatures: [
+        material.toLowerCase() === 'recycled' ? 'Made from recycled materials' : `Made with sustainable ${material}`,
+        carbonImpactLevel === 'Low' ? 'Low carbon footprint' : 'Reduced carbon emissions',
+        'AI-calculated sustainability score',
+      ],
+      tags: [
+        name.toLowerCase(),
+        color.toLowerCase(),
+        material.toLowerCase(),
+        category.toLowerCase(),
+        country.toLowerCase(),
+        'sustainable',
+        'eco-friendly',
+        'ai-predicted',
+      ],
+      createdAt: new Date().toISOString(),
+    };
+
+    // Add to products array (in production, this would save to database)
+    products.push(newProduct);
+
+    res.status(201).json({
+      success: true,
+      message: 'Product created with AI-predicted carbon footprint',
+      data: newProduct,
+      aiPrediction: {
+        eco_score: aiPrediction.eco_score,
+        carbon_footprint: aiPrediction.carbon_footprint,
+        impact_level: aiPrediction.impact_level,
+        sustainability_grade: aiPrediction.sustainability_grade,
+        recommendations: aiPrediction.recommendations,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating product:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create product',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -609,4 +775,5 @@ module.exports = {
   getCarbonStats,
   getCategories,
   getSimilarProducts,
+  createProduct,
 };

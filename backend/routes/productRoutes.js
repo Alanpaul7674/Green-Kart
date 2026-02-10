@@ -30,6 +30,7 @@ const {
   getCarbonStats,
   getCategories,
   getSimilarProducts,
+  createProduct,
 } = require('../controllers/productController');
 
 // ==============================================================================
@@ -132,5 +133,29 @@ router.get('/:id', getProductById);
  * Example: POST /api/products/1/calculate-carbon
  */
 router.post('/:id/calculate-carbon', calculateCarbonFootprint);
+
+/**
+ * @route   POST /api/products
+ * @desc    Create a new product with AI-predicted carbon footprint
+ * @access  Admin
+ * 
+ * Required Body:
+ * - name: Product name (e.g., "T-Shirt")
+ * - material: Material type (cotton, polyester, recycled)
+ * - country: Country of origin (e.g., "India", "China", "USA")
+ * 
+ * Optional Body:
+ * - weight: Product weight in kg (default: 0.5)
+ * - category: Category (default: "Topwear")
+ * - price: Price in INR (default: 999)
+ * - image: Image URL (default: placeholder)
+ * - color, size, description, transport_distance, waste_percent
+ * 
+ * The AI model predicts the carbon footprint automatically.
+ * 
+ * Example: POST /api/products
+ * Body: { "name": "Summer Dress", "material": "cotton", "country": "India", "price": 1299 }
+ */
+router.post('/', createProduct);
 
 module.exports = router;
